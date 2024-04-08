@@ -1,107 +1,84 @@
-// Імпорт бібліотеки flatpickr та її стилів
+
+
+
+
+
+
 import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.min.css";
-
-// Імпорт бібліотеки iziToast та її стилів
 import iziToast from "izitoast";
 import "izitoast/dist/css/iziToast.min.css";
 
-// Оголошення змінних для елементів DOM
-const startBtn = document.querySelector('[data-start]');
-const daysTime = document.querySelector('[data-days]');
-const hoursTime = document.querySelector('[data-hours]');
-const minutesTime = document.querySelector('[data-minutes]');
-const secondsTime = document.querySelector('[data-seconds]');
 const input = document.querySelector('#datetime-picker');
+const startBtn = document.querySelector('[data-start]');
+const daysSpan = document.querySelector('[data-days]');
+const hoursSpan = document.querySelector('[data-hours]');
+const minutesSpan = document.querySelector('[data-minutes]');
+const secondsSpan = document.querySelector('[data-seconds]');
+let userSelectedDate = 0;
 
-// Обробник події click для кнопки "Start"
-startBtn.addEventListener('click', () => {
-  startBtn.disabled = true;
-  input.disabled = true;
-  startTimer();
-});
+startBtn.disabled = true;
 
-// Оголошення змінних для таймера
-let timeDifference;
-let intervalId;
+startBtn.addEventListener('click', onTimerStart);
 
-// Налаштування flatpickr
-const options = {
+flatpickr('input[type=text]', {
   enableTime: true,
   time_24hr: true,
+  defaultDate: new Date(),
   minuteIncrement: 1,
 
-  // Обробник події закриття календаря
   onClose(selectedDates) {
-    const userDate = new Date(selectedDates[0]).getTime();
-    const startDate = Date.now();
-
-    // Перевірка, чи вибрана дата у майбутньому
-    if (userDate >= startDate) {
+    const currentDate = new Date();
+    if (selectedDates[0] - currentDate > 0) {
       startBtn.disabled = false;
-      timeDifference = userDate - startDate;
-      updateClockface(convertMs(timeDifference));
-
     } else {
-      // Відображення помилки, якщо вибрана дата у минулому
+      startBtn.disabled = true;
+
       iziToast.error({
-        fontSize: 'large',
-        close: false,
-        position: 'topRight',
-        messageColor: 'white',
-        timeout: 2000,
-        backgroundColor: 'red',
-        message: ("Please choose a date in the future")
+        message: 'Please choose a date in the future!',
       });
     }
-  }
-};
+    userSelectedDate = selectedDates[0];
+  },
+});
 
-// Ініціалізація flatpickr з опціями
-flatpickr('#datetime-picker', options);
-
-// Функція для оновлення значень таймера
-function updateClockface({ days, hours, minutes, seconds }) {
-  daysTime.textContent = `${days}`;
-  hoursTime.textContent = `${hours}`;
-  minutesTime.textContent = `${minutes}`;
-  secondsTime.textContent = `${seconds}`;
-}
-
-// Функція для запуску таймера
-function startTimer() {
-  clearInterval(intervalId);
-  intervalId = setInterval(timer, 1000);
-}
-
-// Функція таймера
-function timer() {
-  if (timeDifference > 0) {
-    timeDifference -= 1000;
-    updateClockface(convertMs(timeDifference));
-  } else {
-    // Зупинка таймера, якщо досягнутий нуль
-    clearInterval(intervalId);
-    input.disabled = false;
-  }
-}
-
-// Функція для додавання ведучого нуля
-function addLeadingZero(value) {
-  return String(value).padStart(2, "0");
-}
-
-// Функція для конвертації мілісекунд у дні, години, хвилини та секунди
-function convertMs(time) {
+function convertMs(ms) {
   const second = 1000;
   const minute = second * 60;
   const hour = minute * 60;
   const day = hour * 24;
 
-  const days = addLeadingZero(Math.floor(time / day));
-  const hours = addLeadingZero(Math.floor((time % day) / hour));
-  const minutes = addLeadingZero(Math.floor(((time % day) % hour) / minute));
-  const seconds = addLeadingZero(Math.floor((((time % day) % hour) % minute) / second));
+  const days = Math.floor(ms / day);
+  const hours = Math.floor((ms % day) / hour);
+  const minutes = Math.floor(((ms % day) % hour) / minute);
+  const seconds = Math.floor((((ms % day) % hour) % minute) / second);
 
   return { days, hours, minutes, seconds };
+}
+
+function addLeadingZero(value) {
+  return String(value).padStart(2, 0);
+}
+
+function updateTimerFields({ days, hours, minutes, seconds }) {
+  daysSpan.textContent = addLeadingZero(days);
+  hoursSpan.textContent = addLeadingZero(hours);
+  minutesSpan.textContent = addLeadingZero(minutes);
+  secondsSpan.textContent = addLeadingZero(seconds);
+}
+
+function onTimerStart() {
+  const selectedDate = userSelectedDate;
+  const timerId = setInterval(() => {
+    const startDate = new Date();
+    const countDown = selectedDate - startDate;
+    startBtn.disabled = true;
+    input.disabled = true;
+
+    if (countDown < 1000) {
+      clearInterval(timerId);
+      return;
+    }
+    updateTimerFields(convertMs(countDown));
+  }, 1000);
 }
